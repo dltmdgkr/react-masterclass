@@ -1,5 +1,6 @@
-import axios from "axios";
-import { useEffect, useState } from "react";
+// import axios from "axios";
+// import { useEffect, useState } from "react";
+import { useQuery } from "react-query";
 import {
   Link,
   Outlet,
@@ -8,6 +9,7 @@ import {
   useParams,
 } from "react-router-dom";
 import { styled } from "styled-components";
+import { fetchCionInfo, fetchCionTickers } from "../api";
 
 const Container = styled.div`
   padding: 0px 20px;
@@ -138,34 +140,42 @@ interface PriceData {
 }
 
 function Coin() {
-  const [loading, setLoading] = useState(true);
-  const [info, setInfo] = useState<InfoData>();
-  const [priceInfo, setPriceInfo] = useState<PriceData>();
   const { coinId } = useParams();
   const { state } = useLocation() as RouteState;
   const priceMatch = useMatch(`/${coinId}/price`);
   const chartMatch = useMatch(`/${coinId}/chart`);
+  const { isLoading: infoLoading, data: infoData } = useQuery<InfoData>(
+    ["coin", coinId],
+    () => fetchCionInfo(coinId!)
+  );
+  const { isLoading: tickersLoading, data: tickersData } = useQuery<PriceData>(
+    ["tickers", coinId],
+    () => fetchCionTickers(coinId!)
+  );
+  const loading = infoLoading || tickersLoading;
+  // const [loading, setLoading] = useState(true);
+  // const [info, setInfo] = useState<InfoData>();
+  // const [priceInfo, setPriceInfo] = useState<PriceData>();
 
-  useEffect(() => {
-    (async () => {
-      const infoData = await axios(
-        `https://api.coinpaprika.com/v1/coins/${coinId}`
-      );
-      console.log(infoData.data);
-      const priceData = await axios(
-        `https://api.coinpaprika.com/v1/tickers/${coinId}`
-      );
-      setInfo(infoData.data);
-      setPriceInfo(priceData.data);
-      setLoading(false);
-    })();
-  }, [coinId]);
+  // useEffect(() => {
+  //   (async () => {
+  //     const infoData = await axios(
+  //       `https://api.coinpaprika.com/v1/coins/${coinId}`
+  //     );
+  //     const priceData = await axios(
+  //       `https://api.coinpaprika.com/v1/tickers/${coinId}`
+  //     );
+  //     setInfo(infoData.data);
+  //     setPriceInfo(priceData.data);
+  //     setLoading(false);
+  //   })();
+  // }, [coinId]);
 
   return (
     <Container>
       <Header>
         <Title>
-          {state?.name ? state.name : loading ? "Loading..." : info?.name}
+          {state?.name ? state.name : loading ? "Loading..." : infoData?.name}
         </Title>
       </Header>
       {loading ? (
@@ -175,26 +185,26 @@ function Coin() {
           <Overview>
             <OverviewItem>
               <span>Rank:</span>
-              <span>{info?.rank}</span>
+              <span>{infoData?.rank}</span>
             </OverviewItem>
             <OverviewItem>
               <span>Symbol:</span>
-              <span>${info?.symbol}</span>
+              <span>${infoData?.symbol}</span>
             </OverviewItem>
             <OverviewItem>
               <span>Open Source:</span>
-              <span>{info?.open_source ? "Yes" : "No"}</span>
+              <span>{infoData?.open_source ? "Yes" : "No"}</span>
             </OverviewItem>
           </Overview>
-          <Description>{info?.description}</Description>
+          <Description>{infoData?.description}</Description>
           <Overview>
             <OverviewItem>
               <span>Total Suply:</span>
-              <span>{priceInfo?.total_supply}</span>
+              <span>{tickersData?.total_supply}</span>
             </OverviewItem>
             <OverviewItem>
               <span>Max Supply:</span>
-              <span>{priceInfo?.max_supply}</span>
+              <span>{tickersData?.max_supply}</span>
             </OverviewItem>
           </Overview>
           <Tabs>
@@ -205,7 +215,7 @@ function Coin() {
               <Link to={`/${coinId}/chart`}>chart</Link>
             </Tab>
           </Tabs>
-          <Outlet />
+          <Outlet context={coinId} />
         </>
       )}
     </Container>
